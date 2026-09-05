@@ -85,6 +85,16 @@ X_test_feats = extract_features(X_test_scaled)
 print(f"las dimensiones del nuevo training set son: {X_train_feats.shape}")
 print(f"las dimensiones del nuevo test set son: {X_train_feats.shape}")
 
+def distancia_euclidiana(a, b):
+    return np.sqrt(np.sum((a - b) ** 2))
+
+def knn_predict(X_train, y_train, x_query, k=5):
+    distancias = [distancia_euclidiana(x_query, x_train_i) for x_train_i in X_train]
+    k_indices = np.argsort(distancias)[:k]
+    k_labels = y_train[k_indices]
+    valores, conteos = np.unique(k_labels, return_counts=True)
+    return valores[np.argmax(conteos)]
+
 def matriz_confusion(y_true, y_pred, clases):
     n_clases = len(clases)
     clase_a_idx = {c: i for i, c in enumerate(clases)}
@@ -104,9 +114,9 @@ def metricas_por_clase(matriz, clases):
     f1 = np.zeros(n_clases)
 
     for i in range(n_clases):
-        vp = matriz[i, i]                          # verdaderos positivos
-        fp = np.sum(matriz[:, i]) - vp              # falsos positivos (columna i, sin la diagonal)
-        fn = np.sum(matriz[i, :]) - vp               # falsos negativos (fila i, sin la diagonal)
+        vp = matriz[i, i]
+        fp = np.sum(matriz[:, i]) - vp
+        fn = np.sum(matriz[i, :]) - vp
 
         precision[i] = vp / (vp + fp) if (vp + fp) > 0 else 0.0
         recall[i] = vp / (vp + fn) if (vp + fn) > 0 else 0.0
@@ -115,22 +125,11 @@ def metricas_por_clase(matriz, clases):
 
     return precision, recall, f1
 
-
-def distancia_euclidiana(a, b):
-    return np.sqrt(np.sum((a - b) ** 2))
-
-def knn_predict(X_train, y_train, x_query, k=5):
-    distancias = [distancia_euclidiana(x_query, x_train_i) for x_train_i in X_train]
-    k_indices = np.argsort(distancias)[:k]
-    k_labels = y_train[k_indices]
-    # voto mayoritario
-    valores, conteos = np.unique(k_labels, return_counts=True)
-    return valores[np.argmax(conteos)]
-
-def knn_evaluate(X_train, y_train, X_test, y_test, k=5, batch_size=500):
+def knn_evaluate(X_train, y_train, X_test, y_test, k=5):
     predicciones = [knn_predict(X_train, y_train, x, k) for x in X_test]
-    # --- Métricas ---
+    predicciones = np.array(predicciones, dtype=y_train.dtype)
 
+    # --- Métricas ---
     accuracy = np.mean(predicciones == y_test)
     clases = np.unique(np.concatenate([y_train, y_test]))
     matriz = matriz_confusion(y_test, predicciones, clases)
